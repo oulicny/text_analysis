@@ -1,4 +1,4 @@
-# text_analysis
+# Product Review Text Analysis
 
 This repository is a quick analysis of product review text data found on the University of California, Irvine Machine Learning Repository. 
 
