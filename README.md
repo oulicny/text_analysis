@@ -1,6 +1,6 @@
 # text_analysis
 
-This repository is a quick analysis of product review text data found on the University of California-Irvine Machine Learning Repository. 
+This repository is a quick analysis of product review text data found on the University of California, Irvine Machine Learning Repository. 
 
 In this exercise, I imagine that I am a data analyst preparing a report for the CMO of a large holding company, with product offerings across the tech, automotive, and hospitality sectors. I use a variety of techniques – text mining, clustering, and sentiment analysis — to prepare the text data, group it according to shared characteristics, and create an analysis with visualizations showing sentiments across the firm's different hotel holdings. The code and  visualizations created are attached to this repository.
 
