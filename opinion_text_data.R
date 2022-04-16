@@ -11,8 +11,6 @@ for (i in length(file_list)){
   df <- rbind(df, add_data)
 } # for loop to read in data from folder, iterating through each file in the folder, and union to end of the empty data frame
 
-# end up with 89 records of reviews for various products
-
 ### Clean data ###
 df[3,] # look at a few different reviews
 df[16,]
@@ -21,14 +19,14 @@ txt_tbl <- tibble(df) # convert to tibble
 colnames(txt_tbl) <- c("text") # add column label to text
 txt_tbl$review_index <- 1:nrow(txt_tbl) # add text record index
 
-### Exploratory Data Analysis/Topic Discovery ###
+### Exploratory Data Analysis/Topic Discovery
 
 ## have a two-column tibble, which is good for looking at each record of text but we can try to analyze text across products
 library(stringr) # text cleaning and regular expressions
 library(tidytext) # provides additional text mining functions
 
 txt_tbl <- txt_tbl %>% 
-  unnest_tokens(word, text)
+  unnest_tokens(word, text) # get each word from sentence
 
 txt_tbl %>% 
   count(word, sort = T) # word frequency
@@ -37,8 +35,8 @@ txt_tbl %>%
 # can fix with the anti_join functionality of the tidytext package
 
 txt_tbl %>% 
-  anti_join(stop_words) %>% 
-  count(word, sort = T) # can see that there is a lot of variance in the words
+  anti_join(stop_words) %>% # remove common words
+  count(word, sort = T) # can see that there is a lot of variance in the words used in reviews
 
 # look at most common words by review
 txt_tbl %>% 
@@ -57,7 +55,7 @@ txt_tbl %>%
 
 ##### Method 2: Look at text in each review to view topics #####
 
-library(tm, SnowballC) # required packages
+library(tm, SnowballC) # required packages for NLP and text data manipulation
 
 reviews_raw <- VCorpus(DirSource()) # create a corpus of the reviews text files
 
@@ -78,8 +76,8 @@ dtm_review_mat <- as.matrix(dtm_review) # convert into matrix form for analysis
 
 ### Data Analysis/Topic Discovery
 
-## Topic Discovery Step 1: Term Frequency-Inverse Document Frequency
-# An algorithm that decreases the weight of frequency of commonly used words and increases
+## Topic Discovery Step 1: Term Frequency-Inverse Document Frequency (tf-idf)
+# Tf-idf is an algorithm that decreases the weight of frequency of commonly used words and increases
 # the weight of frequency of less commonly used words.
 # The algorithm is helpful for identifying distinct words used to describe things.
 
@@ -89,13 +87,14 @@ dtm_review_tfidf_mat <- as.matrix(dtm_review_tfidf)
 # look at a few examples
 
 # 1. the food at the Holiday Inn in London
-head(sort(dtm_review_tfidf_mat[14,], decreasing = T), n = 10) # not super informative except "Indian"
+head(sort(dtm_review_tfidf_mat[14,], decreasing = T), n = 10) # not super informative
 
 # 2. the interior design of a 2008 Honda Accord
 head(sort(dtm_review_tfidf_mat[18,], decreasing = T), n = 10) # "Dash", "roomy", "Leather" appear, could dig deeper
 
 # 3. the staff at the Swissotel in Chicago
-head(sort(dtm_review_tfidf_mat[47,], decreasing = T), n = 10) # "Dash", "roomy", "Leather" appear, could dig deeper # sounds like generally good reviews, except a 1% review rate showing "rude"!
+head(sort(dtm_review_tfidf_mat[47,], decreasing = T), n = 10) # "Dash", "roomy", "Leather" appear, could dig deeper 
+# sounds like generally good reviews, except a 1% review rate showing "rude"!
 
 # the value of this method is that by pointing out distinctive words, can focus the review of the messages by customers and learn how to improve operations
 
@@ -208,7 +207,7 @@ hotel_review_list <- c("bathroom_bestwestern_hotel_sfo.txt.data", "food_holiday_
                        "service_holiday_inn_london.txt.data", "service_swissotel_hotel_chicago.txt.data", 
                        "staff_bestwestern_hotel_sfo.txt.data", "staff_swissotel_chicago.txt.data")
 
-tm_filter(reviews_clean, function(x)meta(x)[["id"]] %in% hotel_review_list) # test to see it works
+tm_filter(reviews_clean, function(x)meta(x)[["id"]] %in% hotel_review_list) # match ID in metadata for corpus to list of hotel reviews names
 
 hotel_review_corpus <- tm_filter(reviews_clean, function(x)meta(x)[["id"]] %in% hotel_review_list) # create filtered corpus
 
@@ -218,7 +217,7 @@ meta(hotel_review_corpus[[2]], tag= "id") # pull name of review
 
 (test_2 <- tibble(review_name = meta(hotel_review_corpus[[2]], tag= "id"),
        text = content(hotel_review_corpus[[2]])) %>% 
-  unnest_tokens(word,text)) # check that this will work for tibble
+    unnest_tokens(word,text)) # check that this will work for tibble
 
 hotel_review_text = data.frame() # create empty data frame
 
@@ -227,10 +226,10 @@ for (i in seq_along(hotel_review_corpus)){
                                         text = content(hotel_review_corpus[[i]]))
   
   hotel_review_text <- rbind(hotel_review_text, add_data)
-} ## loop through corpus and add text from each review
+} ## for loop through corpus to add text from each review into dataframe and bind to the end of empty data frame on top of each other
 
 hotel_review_text <- hotel_review_text %>% 
-  unnest_tokens(word, text) # create tibble of ~32k words grouped by each hotel review
+  unnest_tokens(word, text) # extract just the words, create tibble of ~32k words grouped by each  review
 
 ## join sentiments data to existing data frame
 
@@ -240,7 +239,7 @@ hotel_review_text <- hotel_review_text %>%
   left_join(get_sentiments("nrc")) # keep everything in the hotel review text dataframe and join in sentiment column where there is a match 
 
 hotel_review_text %>% 
-  count(sentiment, sort = T) # majority of sentiment are null, but the top three words to descibe reviews are "positive", "trust", "joy"
+  count(sentiment, sort = T) # majority of sentiments are null, but the top three words to describe reviews are "positive", "trust", "joy"
 
 ## visualize the sentiment data
 
@@ -269,7 +268,8 @@ hotel_review_text %>%
   ggplot(aes(reorder(review_name, sentiment_metric), sentiment_metric, fill = review_name)) +
   geom_bar(stat = "identity") +
   coord_flip() +
-  theme(legend.position = 0) # creates horizontal stacked bar chart ranking review text data on sentiment from highest to lowest
+  labs(x = "Hotel Review Name", y = "Sentiment Metric") +
+  theme(legend.position = 0)# creates horizontal stacked bar chart ranking review text data on sentiment from highest to lowest 
   
 hotel_review_text %>% 
   group_by(review_name) %>% # group by hotel review text file
@@ -284,6 +284,7 @@ hotel_review_text %>%
   ggplot(aes(reorder(review_name, sentiment_metric), sentiment_metric)) + # remove fill to maybe remove confusion/less distracting
   geom_bar(stat = "identity") +
   coord_flip() +
+  labs(x = "Hotel Review Name", y = "Sentiment Metric") +
   theme(legend.position = 0)
 
 # try to group text by hotel location and compare
@@ -305,6 +306,7 @@ hotel_review_text %>%
   ggplot(aes(reorder(hotel_name, sentiment_metric), sentiment_metric, fill = hotel_name)) + # remove fill to maybe remove confusion/less distracting
   geom_bar(stat = "identity") +
   coord_flip() +
+  labs(x = "Hotel Name", y = "Sentiment Metric") +
   theme(legend.position = 0) # groups reviews by hotel location, though Swissotel Chicago needs another layer of grouping
   
 hotel_review_text %>% 
@@ -325,7 +327,7 @@ hotel_review_text %>%
   ggplot(aes(reorder(hotel_name, sentiment_metric), sentiment_metric, fill = hotel_name)) + # remove fill to maybe remove confusion/less distracting
   geom_bar(stat = "identity") +
   coord_flip() +
-  theme(legend.position = 0) # groups reviews by hotel location, though Swissotel Chicago needs another layer of grouping
-
+  labs(x = "Hotel Name", y = "Sentiment Metric") +
+  theme(legend.position = 0) 
 
 
